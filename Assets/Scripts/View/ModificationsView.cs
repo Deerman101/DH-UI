@@ -32,7 +32,7 @@ public class ModificationsView : MonoBehaviour
                 continue;
             }
 
-            view.Bind(mod);
+            view.Bind(mod, vm);
 
             items.Add(go);
         }

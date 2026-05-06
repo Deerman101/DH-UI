@@ -1,45 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 
-/// <summary>
-/// ViewModel модификатора
-/// </summary>
-public class ModificationViewModel
+public enum HighlightState
 {
-    public ModificationModel Model;
-
-    public ObservableProperty<bool> Highlight = new();
-
-    public ModificationViewModel(ModificationModel m)
-    {
-        Model = m;
-    }
+    None,
+    Compatible,
+    Incompatible,
+    Selected
 }
-
-/// <summary>
-/// ViewModel способности
-/// </summary>
-public class AbilityViewModel
-{
-    public AbilityModel Model;
-
-    public ObservableProperty<bool> Highlight = new();
-    public ObservableProperty<ModificationViewModel> Attached = new();
-
-    public AbilityViewModel(AbilityModel m)
-    {
-        Model = m;
-    }
-
-    public bool IsCompatible(ModificationViewModel mod)
-    {
-        return Model.SupportedTypes.Contains(mod.Model.Type);
-    }
-}
-
-/// <summary>
-/// ViewModel персонажа
-/// </summary>
+/////// <summary>
+/////// ViewModel персонажа
+/////// </summary>
 public class CharacterViewModel
 {
     public string Name;
@@ -51,6 +23,9 @@ public class CharacterViewModel
 
     public ObservableProperty<AbilityViewModel> HoveredAbility = new();
     public ObservableProperty<ModificationViewModel> HoveredMod = new();
+    private bool highlightCompatibleOnlyForDraggedAssignedMod;
+
+    public event Action OnDataChanged;
 
     public CharacterViewModel(CharacterModel model)
     {
@@ -65,26 +40,125 @@ public class CharacterViewModel
         HoveredMod.OnChanged += OnModHover;
     }
 
-    public void AssignModification(ModificationViewModel mod, AbilityViewModel ability)
+    public void SetHoveredAbility(AbilityViewModel ability)
     {
-        foreach (var a in Abilities)
-        {
-            if (a.Attached.Value == mod)
-                a.Attached.Value = null;
-        }
+        HoveredAbility.Value = ability;
+        HoveredMod.Value = null;
+    }
 
-        ability.Attached.Value = mod;
+    public void SetHoveredMod(ModificationViewModel mod)
+    {
+        HoveredMod.Value = mod;
+        HoveredAbility.Value = null;
+    }
+
+    public void ClearHover()
+    {
+        HoveredAbility.Value = null;
+        HoveredMod.Value = null;
+    }
+
+    public void BeginAssignedModDragHighlight(ModificationViewModel mod)
+    {
+        highlightCompatibleOnlyForDraggedAssignedMod = true;
+        SetHoveredMod(mod);
+    }
+
+    public void EndAssignedModDragHighlight()
+    {
+        highlightCompatibleOnlyForDraggedAssignedMod = false;
+        ClearHover();
+    }
+
+    public void NotifyDataChanged()
+    {
+        OnDataChanged?.Invoke();
     }
 
     void OnAbilityHover(AbilityViewModel ability)
     {
         foreach (var m in Mods)
-            m.Highlight.Value = ability != null && ability.IsCompatible(m);
+        {
+            if (ability == null)
+            {
+                m.Highlight.Value = HighlightState.None;
+                continue;
+            }
+
+            if (ability.Model.AssignedModification != null)
+            {
+                if (ability.Model.AssignedModification == m.Model)
+                    m.Highlight.Value = HighlightState.Selected;
+                else
+                    m.Highlight.Value = HighlightState.None;
+
+                continue;
+            }
+
+            bool compatible = ability.IsCompatible(m);
+
+            m.Highlight.Value = compatible
+                ? HighlightState.Compatible
+                : HighlightState.Incompatible;
+        }
     }
 
     void OnModHover(ModificationViewModel mod)
     {
         foreach (var a in Abilities)
-            a.Highlight.Value = mod != null && a.IsCompatible(mod);
+        {
+            if (mod == null)
+            {
+                a.Highlight.Value = HighlightState.None;
+                continue;
+            }
+
+            bool compatible = a.IsCompatible(mod);
+
+            if (compatible)
+                a.Highlight.Value = HighlightState.Compatible;
+            else
+                a.Highlight.Value = highlightCompatibleOnlyForDraggedAssignedMod
+                    ? HighlightState.None
+                    : HighlightState.Incompatible;
+        }
+    }
+}
+
+///// <summary>
+///// ViewModel способности
+///// </summary>
+public class AbilityViewModel
+{
+    public AbilityModel Model;
+
+    public ObservableProperty<HighlightState> Highlight = new();
+
+    public ObservableProperty<ModificationModel> AssignedMod = new();
+
+    public AbilityViewModel(AbilityModel m)
+    {
+        Model = m;
+        AssignedMod.Value = Model.AssignedModification;
+    }
+
+    public bool IsCompatible(ModificationViewModel mod)
+    {
+        return Model.SupportedTypes.Contains(mod.Model.Type);
+    }
+}
+
+///// <summary>
+///// ViewModel модификации
+///// </summary>
+public class ModificationViewModel
+{
+    public ModificationModel Model;
+
+    public ObservableProperty<HighlightState> Highlight = new();
+
+    public ModificationViewModel(ModificationModel m)
+    {
+        Model = m;
     }
 }

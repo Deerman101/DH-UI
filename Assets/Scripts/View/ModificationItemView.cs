@@ -2,8 +2,8 @@
 using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
-using System.Collections.Generic;
 using System;
+using System.Collections.Generic;
 
 public class ModificationItemView : MonoBehaviour,
     IBeginDragHandler,
@@ -36,6 +36,7 @@ public class ModificationItemView : MonoBehaviour,
     public List<TypeVisual> TypeVisuals;
 
     private ModificationViewModel vm;
+    private CharacterViewModel owner;
 
     private RectTransform rect;
     private Canvas canvas;
@@ -43,24 +44,17 @@ public class ModificationItemView : MonoBehaviour,
     private Transform originalParent;
     private Vector2 originalPos;
     private int originalIndex;
-    private bool canDrag = true;
 
     void Awake()
     {
         rect = GetComponent<RectTransform>();
         canvas = GetComponentInParent<Canvas>();
-
-        HoverContext.OnHoverChanged += UpdateHighlight;
     }
 
-    void OnDestroy()
-    {
-        HoverContext.OnHoverChanged -= UpdateHighlight;
-    }
-
-    public void Bind(ModificationViewModel vm)
+    public void Bind(ModificationViewModel vm, CharacterViewModel owner)
     {
         this.vm = vm;
+        this.owner = owner;
 
         NameText.text = vm.Model.Name;
         TypeText.text = vm.Model.Type.ToString();
@@ -74,25 +68,69 @@ public class ModificationItemView : MonoBehaviour,
             TypeIcon.sprite = visual.Icon;
         }
 
-        canDrag = !vm.Model.IsUsed;
+        vm.Highlight.OnChanged += OnHighlightChanged;
 
         UpdateUsedState();
-        UpdateHighlight();
+        OnHighlightChanged(vm.Highlight.Value);
+    }
+
+    void OnHighlightChanged(HighlightState state)
+    {
+        if (Outline == null) return;
+
+        Outline.enabled = state != HighlightState.None;
+
+        switch (state)
+        {
+            case HighlightState.Compatible:
+                Outline.effectColor = Color.green;
+                break;
+
+            case HighlightState.Incompatible:
+                Outline.effectColor = Color.red;
+                break;
+
+            case HighlightState.Selected:
+                Outline.effectColor = Color.white;
+                break;
+        }
     }
 
     void UpdateUsedState()
     {
-        if (CanvasGroup == null) return;
+        if (CanvasGroup != null)
+        {
+            bool isUsed = vm.Model.IsUsed;
 
-        CanvasGroup.alpha = vm.Model.IsUsed ? 0.4f : 1f;
+            CanvasGroup.alpha = isUsed ? 0.4f : 1f;
+            CanvasGroup.blocksRaycasts = !isUsed;
+            CanvasGroup.interactable = !isUsed;
+        }
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (DragContext.DraggedMod != null)
+            return;
+
+        owner.SetHoveredMod(vm);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (DragContext.DraggedMod != null)
+            return;
+
+        owner.ClearHover();
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (!canDrag) return;
+        if (vm.Model.IsUsed) return;
 
         DragContext.DraggedMod = vm;
         DragContext.WasDropped = false;
+        owner.BeginAssignedModDragHighlight(vm);
 
         originalParent = transform.parent;
         originalIndex = transform.GetSiblingIndex(); // чтобы потом вернуться в список с соранением иерархии
@@ -106,16 +144,13 @@ public class ModificationItemView : MonoBehaviour,
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (!canDrag) return;
-
         rect.anchoredPosition += eventData.delta / canvas.scaleFactor;
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (!canDrag) return;
-
         DragContext.DraggedMod = null;
+        owner.EndAssignedModDragHighlight();
 
         if (CanvasGroup != null)
             CanvasGroup.blocksRaycasts = true;
@@ -129,63 +164,5 @@ public class ModificationItemView : MonoBehaviour,
         transform.SetParent(originalParent, true);
         transform.SetSiblingIndex(originalIndex);
         rect.anchoredPosition = originalPos;
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        HoverContext.SetMod(vm);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        HoverContext.Clear();
-    }
-
-    void UpdateHighlight()
-    {
-        if (vm == null) return;
-
-        if (Outline != null)
-            Outline.enabled = false;
-
-        if (HoverContext.HoveredAbility != null)
-        {
-            var ability = HoverContext.HoveredAbility.Model;
-            var assigned = ability.AssignedModification;
-
-            if (assigned != null)
-            {
-                if (assigned == vm.Model)
-                {
-                    if (Outline != null)
-                    {
-                        Outline.enabled = true;
-                        //Outline.effectColor = Color.black;
-                        Outline.effectColor = Color.white;
-                    }
-                    return;
-                }
-
-                bool compatible =
-                    ability.SupportedTypes.Contains(vm.Model.Type);
-
-                if (compatible && Outline != null)
-                {
-                    Outline.enabled = true;
-                    Outline.effectColor = Color.green;
-                }
-
-                return;
-            }
-
-            bool isCompatible =
-                ability.SupportedTypes.Contains(vm.Model.Type);
-
-            if (Outline != null)
-            {
-                Outline.enabled = true;
-                Outline.effectColor = isCompatible ? Color.green : Color.red;
-            }
-        }
     }
 }

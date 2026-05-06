@@ -58,7 +58,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0.5019608}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -86,6 +86,7 @@ GameObject:
   - component: {fileID: 5752648481195686146}
   - component: {fileID: 7841249797523855069}
   - component: {fileID: 842058363481422848}
+  - component: {fileID: 2659686172716975298}
   m_Layer: 5
   m_Name: TypeBackImage
   m_TagString: Untagged
@@ -150,6 +151,21 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &2659686172716975298
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 747076236613810904}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_EffectColor: {r: 0.654902, g: 0.654902, b: 0.654902, a: 0.5}
+  m_EffectDistance: {x: 1, y: -1}
+  m_UseGraphicAlpha: 1
 --- !u!1 &1519056841856389836
 GameObject:
   m_ObjectHideFlags: 0
@@ -391,23 +407,23 @@ MonoBehaviour:
   ModIcon: {fileID: 696260522417435472}
   TypeVisuals:
   - Type: 0
-    Background: {fileID: 21300000, guid: 80919b731ae7c4a43944dc8b70a2037f, type: 3}
+    Background: {fileID: 21300000, guid: 673b2482dcf65974b9f13ef116a133d5, type: 3}
     Icon: {fileID: 21300000, guid: 9399c6081a3cd904cb30a6e4986127ad, type: 3}
     BackgroundColor: {r: 0.4862745, g: 0.44705883, b: 0.54509807, a: 1}
   - Type: 1
-    Background: {fileID: 21300000, guid: 80919b731ae7c4a43944dc8b70a2037f, type: 3}
+    Background: {fileID: 21300000, guid: 673b2482dcf65974b9f13ef116a133d5, type: 3}
     Icon: {fileID: 21300000, guid: 03c06bf90bd940947a036839003f34f8, type: 3}
     BackgroundColor: {r: 0.55, g: 0.51238, b: 0.451, a: 1}
   - Type: 2
-    Background: {fileID: 21300000, guid: 80919b731ae7c4a43944dc8b70a2037f, type: 3}
+    Background: {fileID: 21300000, guid: 673b2482dcf65974b9f13ef116a133d5, type: 3}
     Icon: {fileID: 21300000, guid: b0515b59eea52eb4fb27ca0207d7f877, type: 3}
     BackgroundColor: {r: 0.42, g: 0.23662978, b: 0.1806, a: 1}
   - Type: 3
-    Background: {fileID: 21300000, guid: 80919b731ae7c4a43944dc8b70a2037f, type: 3}
+    Background: {fileID: 21300000, guid: 673b2482dcf65974b9f13ef116a133d5, type: 3}
     Icon: {fileID: 21300000, guid: c73162a5a8adb40489bbd422e42a98a8, type: 3}
     BackgroundColor: {r: 0.18039216, g: 0.41960785, b: 0.3529412, a: 1}
   - Type: 4
-    Background: {fileID: 21300000, guid: 80919b731ae7c4a43944dc8b70a2037f, type: 3}
+    Background: {fileID: 21300000, guid: 673b2482dcf65974b9f13ef116a133d5, type: 3}
     Icon: {fileID: 21300000, guid: 3845004e2c6c9f449a49efc6412204f2, type: 3}
     BackgroundColor: {r: 0.64699996, g: 0.16951397, b: 0.16951397, a: 1}
 --- !u!1 &6385146078924629226

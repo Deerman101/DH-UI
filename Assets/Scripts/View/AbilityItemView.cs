@@ -8,7 +8,10 @@ public class AbilityItemView : MonoBehaviour,
     IDropHandler,
     IPointerEnterHandler,
     IPointerExitHandler,
-    IPointerClickHandler
+    IPointerClickHandler,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler
 {
     [Header("UI")]
     public Image Background;
@@ -35,26 +38,74 @@ public class AbilityItemView : MonoBehaviour,
     public List<TypeVisual> TypeVisuals;
 
     private AbilityViewModel vm;
+    private CharacterViewModel owner;
+    private RectTransform assignedModRect;
+    private Canvas rootCanvas;
+    private CanvasGroup assignedModCanvasGroup;
+    private GameObject dragPreviewInstance;
+    private RectTransform dragPreviewRect;
+    private bool isDraggingAssignedMod;
 
     void Awake()
     {
-        HoverContext.OnHoverChanged += UpdateHighlight;
+        rootCanvas = GetComponentInParent<Canvas>();
+
+        if (AssignedModRoot != null)
+        {
+            assignedModRect = AssignedModRoot.GetComponent<RectTransform>();
+            assignedModCanvasGroup = AssignedModRoot.GetComponent<CanvasGroup>();
+
+            if (assignedModCanvasGroup == null)
+            {
+                assignedModCanvasGroup = AssignedModRoot.AddComponent<CanvasGroup>();
+            }
+        }
+    }
+
+    void OnDisable()
+    {
+        CleanupAssignedModDragState(clearGlobalContext: isDraggingAssignedMod);
     }
 
     void OnDestroy()
     {
-        HoverContext.OnHoverChanged -= UpdateHighlight;
+        CleanupAssignedModDragState(clearGlobalContext: isDraggingAssignedMod);
     }
 
-    public void Bind(AbilityViewModel vm)
+    public void Bind(AbilityViewModel vm, CharacterViewModel owner)
     {
         this.vm = vm;
+        this.owner = owner;
 
         Name.text = vm.Model.Name;
         Icon.sprite = vm.Model.Icon;
 
+        vm.Highlight.OnChanged += OnHighlightChanged;
+
         UpdateAssignedMod();
-        UpdateHighlight();
+        OnHighlightChanged(vm.Highlight.Value);
+    }
+
+    void OnHighlightChanged(HighlightState state)
+    {
+        if (Outline == null) return;
+
+        Outline.enabled = state != HighlightState.None;
+
+        switch (state)
+        {
+            case HighlightState.Compatible:
+                Outline.effectColor = Color.green;
+                break;
+
+            case HighlightState.Incompatible:
+                Outline.effectColor = Color.red;
+                break;
+
+            case HighlightState.Selected:
+                Outline.effectColor = Color.white;
+                break;
+        }
     }
 
     void UpdateAssignedMod()
@@ -79,6 +130,22 @@ public class AbilityItemView : MonoBehaviour,
         }
     }
 
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (DragContext.DraggedMod != null)
+            return;
+
+        owner.SetHoveredAbility(vm);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (DragContext.DraggedMod != null)
+            return;
+
+        owner.ClearHover();
+    }
+
     public void OnDrop(PointerEventData eventData)
     {
         if (DragContext.DraggedMod == null)
@@ -94,78 +161,12 @@ public class AbilityItemView : MonoBehaviour,
 
         DragContext.WasDropped = true;
 
-        FindObjectOfType<UIController>().Refresh();
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        HoverContext.SetAbility(vm);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        HoverContext.Clear();
-    }
-
-    void UpdateHighlight()
-    {
-        if (vm == null) return;
-
-        if (Outline != null)
-            Outline.enabled = false;
-
-        if (HoverContext.HoveredMod != null)
-        {
-            bool compatible =
-                vm.Model.SupportedTypes.Contains(HoverContext.HoveredMod.Model.Type);
-
-            if (Outline != null)
-            {
-                Outline.enabled = true;
-                Outline.effectColor = compatible ? Color.green : Color.red;
-            }
-            return;
-        }
-
-        if (HoverContext.HoveredAbility != null)
-        {
-            var hovered = HoverContext.HoveredAbility.Model;
-
-            if (hovered.AssignedModification != null)
-            {
-                var modType = hovered.AssignedModification.Type;
-
-                if (hovered == vm.Model)
-                {
-                    if (Outline != null)
-                    {
-                        Outline.enabled = true;
-                        Outline.effectColor = Color.white;
-                    }
-                    return;
-                }
-
-                bool compatible = vm.Model.SupportedTypes.Contains(modType);
-
-                if (compatible && Outline != null)
-                {
-                    Outline.enabled = true;
-                    Outline.effectColor = Color.green;
-                }
-
-                return;
-            }
-
-            return;
-        }
+        owner.NotifyDataChanged();
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         if (eventData.button != PointerEventData.InputButton.Right)
-            return;
-
-        if (vm == null || vm.Model == null)
             return;
 
         if (vm.Model.AssignedModification == null)
@@ -174,6 +175,83 @@ public class AbilityItemView : MonoBehaviour,
         var command = new RemoveModificationCommand(vm.Model);
         command.Execute();
 
-        FindObjectOfType<UIController>().Refresh();
+        owner.NotifyDataChanged();
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        isDraggingAssignedMod = false;
+
+        if (vm == null || vm.Model == null || vm.Model.AssignedModification == null)
+            return;
+
+        if (assignedModRect == null || rootCanvas == null)
+            return;
+
+        bool startedOnAssignedMod = RectTransformUtility.RectangleContainsScreenPoint(
+            assignedModRect,
+            eventData.position,
+            eventData.pressEventCamera);
+
+        if (!startedOnAssignedMod)
+            return;
+
+        var draggedModVm = owner.Mods.Find(m => m.Model == vm.Model.AssignedModification);
+        if (draggedModVm == null)
+            return;
+
+        DragContext.DraggedMod = draggedModVm;
+        DragContext.WasDropped = false;
+        isDraggingAssignedMod = true;
+        owner.BeginAssignedModDragHighlight(draggedModVm);
+
+        dragPreviewInstance = Instantiate(AssignedModRoot, rootCanvas.transform);
+        dragPreviewRect = dragPreviewInstance.GetComponent<RectTransform>();
+
+        var previewCanvasGroup = dragPreviewInstance.GetComponent<CanvasGroup>();
+        if (previewCanvasGroup == null)
+            previewCanvasGroup = dragPreviewInstance.AddComponent<CanvasGroup>();
+        previewCanvasGroup.blocksRaycasts = false;
+        previewCanvasGroup.interactable = false;
+
+        dragPreviewRect.position = eventData.position;
+
+        if (assignedModCanvasGroup != null)
+            assignedModCanvasGroup.alpha = 0.6f;
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!isDraggingAssignedMod || dragPreviewRect == null)
+            return;
+
+        dragPreviewRect.position = eventData.position;
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        if (!isDraggingAssignedMod)
+            return;
+        CleanupAssignedModDragState(clearGlobalContext: true);
+    }
+
+    void CleanupAssignedModDragState(bool clearGlobalContext)
+    {
+        if (dragPreviewInstance != null)
+            Destroy(dragPreviewInstance);
+        dragPreviewInstance = null;
+        dragPreviewRect = null;
+
+        if (assignedModCanvasGroup != null)
+            assignedModCanvasGroup.alpha = 1f;
+
+        if (clearGlobalContext)
+        {
+            DragContext.DraggedMod = null;
+            isDraggingAssignedMod = false;
+
+            if (owner != null)
+                owner.EndAssignedModDragHighlight();
+        }
     }
 }

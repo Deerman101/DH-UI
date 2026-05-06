@@ -16,7 +16,7 @@ public class CharacterInfoView : MonoBehaviour
     {
         NameText.text = vm.Name;
         HPText.text = $"{vm.HP}/{vm.HP}";
-        ArmorText.text = $"{ vm.Armor}/{ vm.Armor}";
+        ArmorText.text = $"{vm.Armor}/{vm.Armor}";
 
         Portrait.sprite = config.Portrait;
     }

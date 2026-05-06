@@ -21,7 +21,7 @@ public class AbilitiesView : MonoBehaviour
             items.Add(go);
 
             var view = go.GetComponent<AbilityItemView>();
-            view.Bind(ability);
+            view.Bind(ability, vm);
         }
     }
 }
