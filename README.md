@@ -20,7 +20,7 @@ Task for [NAME DELETED] company.
 
 — Modifier removal from an ability (RightClick).
 
-* - Optional requirements.
+`*` — Optional requirements.
 
 ## Results
 
